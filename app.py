@@ -1,13 +1,12 @@
 import streamlit as st
 import pandas as pd
 from pathlib import Path
-import io
 
 # Add a title to the app
 st.title('OMAS ARAÇ YAKIT TAKİP SİSTEMİ')
 
 # Define the file paths for global fuel data
-current_dir = Path.cwd()  # Use current working directory
+current_dir = Path.cwd()
 GLOBAL_FILE = current_dir / 'global_fuel_data.xlsx'
 GLOBAL_REMAINING_FUEL_FILE = current_dir / 'global_remaining_fuel.xlsx'
 
@@ -31,13 +30,13 @@ global_remaining_fuel_df = load_or_initialize_excel(GLOBAL_REMAINING_FUEL_FILE, 
 global_remaining_fuel = global_remaining_fuel_df['global_remaining_fuel'].iloc[0]
 
 # Create a number input for the global "Kalan Mazot"
-mevcut_kalan_mazot = st.number_input('Kalan Mazot (Mevcut):', value=float(global_remaining_fuel))
+kalanmazot = st.number_input('Kalan Mazot (Mevcut):', value=float(global_remaining_fuel))
 
 # Input for "Diğer Verilen Mazot"
-diger = st.number_input('Diğer Verilen Mazot:', min_value=0)
+digerverilen = st.number_input('Diğer Verilen Mazot:', min_value=0)
 
 # Calculate the updated global remaining fuel
-updated_global_remaining_fuel = mevcut_kalan_mazot - diger
+updated_global_remaining_fuel = kalanmazot - digerverilen
 
 # Button to update the global remaining fuel value
 if st.button('Kalan Mazot Güncelle'):
@@ -81,7 +80,7 @@ EXCEL_FILE = current_dir / selected_file_name
 expected_columns = ['tarih', 'baslangickm', 'mazot', 'katedilenyol', 
                     'toplamyol', 'toplammazot', 'ortalama100', 
                     'kumulatif100', 'depomazot', 'depoyaalinanmazot', 
-                    'depodakalanmazot']
+                    'depodakalanmazot', 'kalanmazot', 'digerverilen']
 
 if EXCEL_FILE.exists():
     df = pd.read_excel(EXCEL_FILE, engine='openpyxl')
@@ -100,22 +99,6 @@ tarih = st.text_input('Tarih:')
 baslangickm = st.number_input('Mevcut Kilometre:', min_value=0)
 mazot = st.number_input('Alınan Mazot:', min_value=0)
 depoyaalinanmazot = st.number_input('Depoya Alınan Mazot:', min_value=0)
-
-# Function to convert a DataFrame to an in-memory Excel file
-def to_excel_in_memory(df):
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False)
-    processed_data = output.getvalue()
-    return processed_data
-
-# Download button for Excel file for the selected vehicle plate's data
-st.download_button(
-    label="Verileri İndir",
-    data=to_excel_in_memory(df),
-    file_name=f'{selected_file_name}',
-    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-)
 
 # When the user clicks the Submit button
 if st.button('Ekle'):
@@ -143,7 +126,9 @@ if st.button('Ekle'):
         'kumulatif100': kumulatif100,
         'depomazot': depomazot,
         'depoyaalinanmazot': depoyaalinanmazot,
-        'depodakalanmazot': depodakalanmazot
+        'depodakalanmazot': depodakalanmazot,
+        'kalanmazot': kalanmazot,  # Add kalan mazot
+        'digerverilen': digerverilen  # Add diğer verilen mazot
     }
 
     df = pd.concat([df, pd.DataFrame(new_record, index=[0])], ignore_index=True)
@@ -159,38 +144,19 @@ if not df.empty:
 else:
     st.warning("Veri yok.")
 
-# --- Upload Excel file and append to existing data ---
-uploaded_file = st.file_uploader("Bir Excel dosyası yükleyin ve mevcut veriye ekleyin", type="xlsx")
-if uploaded_file is not None:
-    try:
-        uploaded_df = pd.read_excel(uploaded_file, engine='openpyxl')
-        uploaded_df.columns = uploaded_df.columns.str.lower().str.strip()
-
-        # Ensure the uploaded data has the same structure as the existing data
-        if all(col in expected_columns for col in uploaded_df.columns):
-            df = pd.concat([df, uploaded_df], ignore_index=True)
-            df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
-            st.success(f'{uploaded_file.name} verileri {selected_file_name} dosyasına eklendi!')
-            # Display the updated DataFrame
-            st.dataframe(df)
-        else:
-            st.error("Yüklenen dosya beklenen sütun yapısına uymuyor!")
-    except Exception as e:
-        st.error(f'Hata oluştu: {e}')
-
 # --- Row deletion functionality ---
 if not df.empty:
     st.subheader('Satır Silme')
     row_index_to_delete = st.number_input('Silinecek Satır Numarası:', min_value=0, max_value=len(df)-1, step=1)
 
     if st.button('Satırı Sil'):
-        if len(df) > 1:  # Ensure there's at least one row left after deletion
-            df = df.drop(index=row_index_to_delete).reset_index(drop=True)
-            df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
-            st.success('Satır başarıyla silindi!')
-            st.dataframe(df)  # Display the updated DataFrame
-        else:
-            st.warning("Silinecek veri yok.")
+        df = df.drop(index=row_index_to_delete).reset_index(drop=True)
+        df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
+        st.success(f'{row_index_to_delete} numaralı satır silindi.')
+        # Display the updated DataFrame
+        st.dataframe(df)
+else:
+    st.warning("Silinecek veri yok.")
 
 # --- Delete all data functionality ---
 if st.button('Tüm Verileri Sil'):
