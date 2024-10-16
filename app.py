@@ -164,4 +164,14 @@ if not df.empty:
 else:
     st.warning("Silinecek veri yok.")
 
-# --- Delete all data
+# --- Delete all data ---
+if st.button('Tüm Verileri Sil'):
+    df = pd.DataFrame(columns=expected_columns)  # Reset the DataFrame
+    df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')  # Clear the Excel file
+    st.success(f'{selected_file_name} için tüm veriler silindi.')
+    st.dataframe(df)  # Show the empty DataFrame
+
+# --- Display Kalan Mazot and Diğer Verilen Mazot Data ---
+st.subheader('Kalan Mazot ve Diğer Verilen Mazot')
+kalanmazot_df = pd.DataFrame({'Kalan Mazot': [mevcut_kalan_mazot], 'Diğer Verilen Mazot': [digerverilen]})
+st.dataframe(kalanmazot_df)
