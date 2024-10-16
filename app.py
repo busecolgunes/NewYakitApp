@@ -6,7 +6,7 @@ from pathlib import Path
 st.title('OMAS ARAÇ YAKIT TAKİP SİSTEMİ')
 
 # Define the file paths for global fuel data
-current_dir = Path.cwd()
+current_dir = Path(__file__).parent if '__file__' in locals() else Path.cwd()
 GLOBAL_FILE = current_dir / 'global_fuel_data.xlsx'
 GLOBAL_REMAINING_FUEL_FILE = current_dir / 'global_remaining_fuel.xlsx'
 
@@ -29,21 +29,21 @@ global_remaining_fuel_df = load_or_initialize_excel(GLOBAL_REMAINING_FUEL_FILE, 
 # Get the current global remaining fuel value
 global_remaining_fuel = global_remaining_fuel_df['global_remaining_fuel'].iloc[0]
 
-# Input for "Kalan Mazot"
+# Create a number input for the global "Kalan Mazot"
 mevcut_kalan_mazot = st.number_input('Kalan Mazot (Mevcut):', value=float(global_remaining_fuel))
 
 # Input for "Diğer Verilen Mazot"
-digerverilen = st.number_input('Diğer Verilen Mazot:', min_value=0)
+diger = st.number_input('Diğer Verilen Mazot:', min_value=0)
 
 # Calculate the updated global remaining fuel
-updated_global_remaining_fuel = mevcut_kalan_mazot - digerverilen
+updated_global_remaining_fuel = mevcut_kalan_mazot - diger
 
 # Button to update the global remaining fuel value
 if st.button('Kalan Mazot Güncelle'):
     global_remaining_fuel_df['global_remaining_fuel'].iloc[0] = updated_global_remaining_fuel
     global_remaining_fuel_df.to_excel(GLOBAL_REMAINING_FUEL_FILE, index=False)
 
-    global_fuel_df['global_remaining_fuel'].iloc[0] = updated_global_remaining_fuel
+    global_fuel_df['depodakalanmazot'].iloc[0] = updated_global_remaining_fuel
     global_fuel_df.to_excel(GLOBAL_FILE, index=False)
 
     st.success('Kalan mazot güncellendi!')
@@ -80,7 +80,7 @@ EXCEL_FILE = current_dir / selected_file_name
 expected_columns = ['tarih', 'baslangickm', 'mazot', 'katedilenyol', 
                     'toplamyol', 'toplammazot', 'ortalama100', 
                     'kumulatif100', 'depomazot', 'depoyaalinanmazot', 
-                    'depodakalanmazot']
+                    'depodakalanmazot', 'kalanmazot', 'digerverilen']
 
 if EXCEL_FILE.exists():
     df = pd.read_excel(EXCEL_FILE, engine='openpyxl')
@@ -126,7 +126,9 @@ if st.button('Ekle'):
         'kumulatif100': kumulatif100,
         'depomazot': depomazot,
         'depoyaalinanmazot': depoyaalinanmazot,
-        'depodakalanmazot': depodakalanmazot
+        'depodakalanmazot': depodakalanmazot,
+        'kalanmazot': mevcut_kalan_mazot,
+        'digerverilen': diger
     }
 
     df = pd.concat([df, pd.DataFrame(new_record, index=[0])], ignore_index=True)
@@ -164,14 +166,10 @@ if not df.empty:
 else:
     st.warning("Silinecek veri yok.")
 
-# --- Delete all data ---
-if st.button('Tüm Verileri Sil'):
-    df = pd.DataFrame(columns=expected_columns)  # Reset the DataFrame
-    df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')  # Clear the Excel file
-    st.success(f'{selected_file_name} için tüm veriler silindi.')
-    st.dataframe(df)  # Show the empty DataFrame
-
-# --- Display Kalan Mazot and Diğer Verilen Mazot Data ---
-st.subheader('Kalan Mazot ve Diğer Verilen Mazot')
-kalanmazot_df = pd.DataFrame({'Kalan Mazot': [mevcut_kalan_mazot], 'Diğer Verilen Mazot': [digerverilen]})
-st.dataframe(kalanmazot_df)
+# Button to delete all data in the selected Excel file
+if not df.empty:
+    if st.button('Tüm Verileri Sil'):
+        df = df.iloc[0:0]  # Clear the DataFrame
+        df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
+        st.success('Tüm veriler silindi.')
+        st.dataframe(df)
