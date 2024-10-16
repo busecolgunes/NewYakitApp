@@ -44,17 +44,29 @@ updated_global_remaining_fuel = kalanmazot - digerverilen
 
 # Button to update the global remaining fuel value
 if st.button('Kalan Mazot Güncelle'):
+    # Update global remaining fuel value
     global_remaining_fuel_df['global_remaining_fuel'].iloc[0] = updated_global_remaining_fuel
     global_remaining_fuel_df.to_excel(GLOBAL_REMAINING_FUEL_FILE, index=False)
 
-    global_fuel_df['depodakalanmazot'].iloc[0] = updated_global_remaining_fuel
-    global_fuel_df.to_excel(GLOBAL_FILE, index=False)
+    # Update the relevant file for the selected vehicle plate
+    if EXCEL_FILE.exists():
+        try:
+            vehicle_df = pd.read_excel(EXCEL_FILE, engine='openpyxl')
+            vehicle_df['kalanmazot'].iloc[0] = kalanmazot  # Update kalanmazot
+            vehicle_df['digerverilen'].iloc[0] = digerverilen  # Update digerverilen
 
-    st.success('Kalan mazot güncellendi!')
+            # Save updated DataFrame back to the Excel file
+            vehicle_df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
+            st.success('Kalan mazot güncellendi ve dosyaya kaydedildi!')
+        except Exception as e:
+            st.error(f"Error updating {selected_file_name}: {e}.")
+    else:
+        st.error(f"{selected_file_name} does not exist. Please check the file.")
 
 # Display the updated kalan mazot value
 st.write('Güncellenmiş Kalan Mazot:', updated_global_remaining_fuel)
 
+# Continue with the rest of your existing code...
 # Define the dictionary for vehicle plates and their corresponding Excel files
 files_dict = {
     '06BFD673': '06BFD673.xlsx',
@@ -163,19 +175,15 @@ else:
 # --- Row deletion functionality ---
 if not df.empty:
     st.subheader('Satır Silme')
-    row_index_to_delete = st.number_input('Silinecek Satır Numarası:', min_value=0, max_value=len(df)-1, step=1)
-
-    if st.button('Satırı Sil'):
+    row_index_to_delete = st.number_input('Silinecek Satır Numarası:', min_value=0, max_value=len(df)-1)
+    if st.button('Sil'):
         df = df.drop(index=row_index_to_delete).reset_index(drop=True)
         df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
-        st.success(f'{row_index_to_delete} numaralı satır silindi.')
-        # Display the updated DataFrame
+        st.success('Seçilen satır silindi.')
         st.dataframe(df)
-else:
-    st.warning("Silinecek veri yok.")
 
 # --- Delete all data functionality ---
 if st.button('Tüm Verileri Sil'):
-    df = pd.DataFrame(columns=expected_columns)  # Reset the DataFrame to empty
+    df = pd.DataFrame(columns=expected_columns)  # Reset the DataFrame
     df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
     st.success('Tüm veriler silindi.')
