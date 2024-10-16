@@ -14,7 +14,11 @@ GLOBAL_REMAINING_FUEL_FILE = current_dir / 'global_remaining_fuel.xlsx'
 def load_or_initialize_excel(file_path, default_value):
     if file_path.exists():
         try:
-            return pd.read_excel(file_path, engine='openpyxl')
+            df = pd.read_excel(file_path, engine='openpyxl')
+            if 'global_remaining_fuel' not in df.columns:
+                st.error(f"Error: 'global_remaining_fuel' column is missing in {file_path.name}.")
+                return pd.DataFrame({'global_remaining_fuel': [default_value]})
+            return df
         except Exception as e:
             st.error(f"Error reading {file_path.name}: {e}. Recreating the file.")
             return pd.DataFrame({'global_remaining_fuel': [default_value]})
@@ -85,6 +89,11 @@ expected_columns = ['tarih', 'baslangickm', 'mazot', 'katedilenyol',
 if EXCEL_FILE.exists():
     try:
         df = pd.read_excel(EXCEL_FILE, engine='openpyxl')
+        # Ensure all expected columns are present
+        for col in expected_columns:
+            if col not in df.columns:
+                st.warning(f"Warning: Column '{col}' is missing in {selected_file_name}.")
+                df[col] = None  # Add the missing columns with None values
     except Exception as e:
         st.error(f"Error reading {EXCEL_FILE.name}: {e}. Creating a new DataFrame.")
         df = pd.DataFrame(columns=expected_columns)
@@ -168,6 +177,5 @@ else:
 # --- Delete all data functionality ---
 if st.button('Tüm Verileri Sil'):
     df = pd.DataFrame(columns=expected_columns)  # Reset the DataFrame to empty
-    df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')  # Save the empty DataFrame back to the Excel file
-    st.success('Tüm veriler silindi!')
-    st.dataframe(df)  # Display the empty DataFrame
+    df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
+    st.success('Tüm veriler silindi.')
