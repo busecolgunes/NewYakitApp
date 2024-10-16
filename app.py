@@ -83,7 +83,11 @@ expected_columns = ['tarih', 'baslangickm', 'mazot', 'katedilenyol',
                     'depodakalanmazot', 'kalanmazot', 'digerverilen']
 
 if EXCEL_FILE.exists():
-    df = pd.read_excel(EXCEL_FILE, engine='openpyxl')
+    try:
+        df = pd.read_excel(EXCEL_FILE, engine='openpyxl')
+    except Exception as e:
+        st.error(f"Error reading {EXCEL_FILE.name}: {e}. Creating a new DataFrame.")
+        df = pd.DataFrame(columns=expected_columns)
 else:
     df = pd.DataFrame(columns=expected_columns)
 
@@ -102,6 +106,7 @@ depoyaalinanmazot = st.number_input('Depoya Alınan Mazot:', min_value=0)
 
 # When the user clicks the Submit button
 if st.button('Ekle'):
+    # Calculate katedilen yol
     if not df.empty:
         previous_km = df.iloc[-1]['baslangickm']
         katedilenyol = baslangickm - previous_km
@@ -115,6 +120,7 @@ if st.button('Ekle'):
     depomazot = df['depomazot'].sum() + depoyaalinanmazot - mazot if not df['depomazot'].empty else depoyaalinanmazot - mazot
     depodakalanmazot = depomazot  # Remaining fuel in depot
 
+    # Create new record
     new_record = {
         'tarih': tarih,
         'baslangickm': baslangickm,
@@ -131,6 +137,7 @@ if st.button('Ekle'):
         'digerverilen': digerverilen  # Add diğer verilen mazot
     }
 
+    # Append the new record to the DataFrame
     df = pd.concat([df, pd.DataFrame(new_record, index=[0])], ignore_index=True)
     df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
     st.success(f'Data saved to {selected_file_name}!')
