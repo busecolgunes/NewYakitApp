@@ -184,9 +184,19 @@ if not df.empty:
     row_index_to_delete = st.number_input('Silinecek Satır Numarası:', min_value=0, max_value=len(df)-1, step=1)
 
     if st.button('Satırı Sil'):
-        df = df.drop(index=row_index_to_delete).reset_index(drop=True)
-        df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
-        st.success('Satır başarıyla silindi!')
-        st.dataframe(df)  # Display the updated DataFrame
+        if len(df) > 1:  # Ensure there's at least one row left after deletion
+            df = df.drop(index=row_index_to_delete).reset_index(drop=True)
+            df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
+            st.success('Satır başarıyla silindi!')
+            st.dataframe(df)  # Display the updated DataFrame
+        else:
+            st.warning("Silinecek veri yok.")
 else:
     st.warning("Silinecek veri yok.")
+
+# --- Delete all data functionality ---
+if st.button('Tüm Verileri Sil'):
+    df = pd.DataFrame(columns=expected_columns)  # Reset the DataFrame to empty
+    df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')  # Save the empty DataFrame back to the Excel file
+    st.success('Tüm veriler silindi!')
+    st.dataframe(df)  # Display the empty DataFrame
