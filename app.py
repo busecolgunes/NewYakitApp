@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from pathlib import Path
+import io
 
 # Add a title to the app
 st.title('OMAS ARAÇ YAKIT TAKİP SİSTEMİ')
@@ -155,6 +156,24 @@ st.download_button(
     file_name=f'{selected_file_name}',
     mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 )
+
+# --- Upload Excel file and append to existing data ---
+uploaded_file = st.file_uploader("Bir Excel dosyası yükleyin ve mevcut veriye ekleyin", type="xlsx")
+if uploaded_file is not None:
+    try:
+        uploaded_df = pd.read_excel(uploaded_file, engine='openpyxl')
+        
+        # Ensure columns match before concatenating
+        if set(uploaded_df.columns) == set(df.columns):
+            df = pd.concat([df, uploaded_df], ignore_index=True)
+            df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
+            st.success(f'{uploaded_file.name} verileri {selected_file_name} dosyasına eklendi!')
+            # Display the updated DataFrame
+            st.dataframe(df)
+        else:
+            st.error("Yüklenen Excel dosyası mevcut veri yapısına uymuyor!")
+    except Exception as e:
+        st.error(f'Hata oluştu: {e}')
 
 # --- Row deletion functionality ---
 if not df.empty:
