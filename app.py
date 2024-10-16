@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 from pathlib import Path
-from github import Github
 
 # Add a title to the app
 st.title('OMAS ARAÇ YAKIT TAKİP SİSTEMİ')
@@ -52,6 +51,18 @@ if st.button('Kalan Mazot Güncelle'):
 # Display the updated kalan mazot value
 st.write('Güncellenmiş Kalan Mazot:', updated_global_remaining_fuel)
 
+# Show Excel data for "kalan mazot" and "diger mazot"
+st.subheader('Kalan Mazot ve Diğer Mazot Verileri')
+st.dataframe(global_remaining_fuel_df)
+
+# Download button for Excel file
+st.download_button(
+    label="Kalan Mazot Verilerini İndir",
+    data=global_remaining_fuel_df.to_excel(index=False),
+    file_name='global_remaining_fuel.xlsx',
+    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+)
+
 # Define the dictionary for vehicle plates and their corresponding Excel files
 files_dict = {
     '06BFD673': '06BFD673.xlsx',
@@ -91,7 +102,7 @@ else:
 # Display the data from the Excel file as a table
 if not df.empty:
     st.subheader(f'{selected_file_key} Plakası için Mevcut Veriler')
-    st.dataframe(df)  # Display the DataFrame as a table
+    st.dataframe(df)
 else:
     st.warning("Henüz veri yok.")
 
@@ -137,25 +148,13 @@ if st.button('Ekle'):
     # Display the updated DataFrame
     st.dataframe(df)
 
-# Display a success message without showing the DataFrame
-if not df.empty:
-    st.subheader('Veri Girişi Başarılı!')
-else:
-    st.warning("Veri yok.")
-
-# --- Upload Excel file and append to existing data ---
-uploaded_file = st.file_uploader("Bir Excel dosyası yükleyin ve mevcut veriye ekleyin", type="xlsx")
-if uploaded_file is not None:
-    try:
-        uploaded_df = pd.read_excel(uploaded_file, engine='openpyxl')
-        uploaded_df.columns = uploaded_df.columns.str.lower().str.strip()
-        df = pd.concat([df, uploaded_df], ignore_index=True)
-        df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
-        st.success(f'{uploaded_file.name} verileri {selected_file_name} dosyasına eklendi!')
-        # Display the updated DataFrame
-        st.dataframe(df)
-    except Exception as e:
-        st.error(f'Hata oluştu: {e}')
+# Download button for the selected vehicle plate's data
+st.download_button(
+    label="Verileri İndir",
+    data=df.to_excel(index=False),
+    file_name=f'{selected_file_name}',
+    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+)
 
 # --- Row deletion functionality ---
 if not df.empty:
@@ -170,21 +169,3 @@ if not df.empty:
         st.dataframe(df)
 else:
     st.warning("Silinecek veri yok.")
-
-# --- GitHub Storage Functionality ---
-st.subheader('Veri GitHub\'a Yükleme')
-
-repo_name = st.text_input('GitHub Repo Adı:')
-access_token = st.text_input('GitHub Erişim Anahtarı:', type='password')
-
-if st.button('Verileri GitHub\'a Yükle'):
-    if repo_name and access_token:
-        try:
-            g = Github(access_token)
-            repo = g.get_repo(repo_name)
-            repo.create_file(selected_file_name, "Update data", df.to_csv(index=False), branch="main")
-            st.success(f'{selected_file_name} başarıyla GitHub\'a yüklendi!')
-        except Exception as e:
-            st.error(f'Hata oluştu: {e}')
-    else:
-        st.warning("Lütfen GitHub repo adı ve erişim anahtarını girin.")
