@@ -191,8 +191,6 @@ if not df.empty:
             st.dataframe(df)  # Display the updated DataFrame
         else:
             st.warning("Silinecek veri yok.")
-else:
-    st.warning("Silinecek veri yok.")
 
 # --- Delete all data functionality ---
 if st.button('Tüm Verileri Sil'):
