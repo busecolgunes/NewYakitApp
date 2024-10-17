@@ -40,9 +40,11 @@ updated_global_remaining_fuel = mevcut_kalan_mazot - diger
 
 # Button to update the global remaining fuel value
 if st.button('Kalan Mazot Güncelle'):
+    # Update the "global_remaining_fuel" in the Excel file
     global_remaining_fuel_df['global_remaining_fuel'].iloc[0] = updated_global_remaining_fuel
     global_remaining_fuel_df.to_excel(GLOBAL_REMAINING_FUEL_FILE, index=False)
 
+    # Update the "depodakalanmazot" in the global fuel data
     global_fuel_df['depodakalanmazot'].iloc[0] = updated_global_remaining_fuel
     global_fuel_df.to_excel(GLOBAL_FILE, index=False)
 
