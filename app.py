@@ -29,12 +29,20 @@ global_remaining_fuel_df = load_or_initialize_excel(GLOBAL_REMAINING_FUEL_FILE, 
 # Get the current global remaining fuel value
 global_remaining_fuel = global_remaining_fuel_df['global_remaining_fuel'].iloc[0]
 
+# Create session state for inputs if they don't exist
+if 'mevcut_kalan_mazot' not in st.session_state:
+    st.session_state.mevcut_kalan_mazot = float(global_remaining_fuel)
+if 'diger' not in st.session_state:
+    st.session_state.diger = 0.0
+if 'verilme_nedeni' not in st.session_state:
+    st.session_state.verilme_nedeni = ''
+
 # Create a number input for the global "Kalan Mazot"
-mevcut_kalan_mazot = st.number_input('Kalan Mazot (Mevcut):', value=float(global_remaining_fuel))
+mevcut_kalan_mazot = st.number_input('Kalan Mazot (Mevcut):', value=st.session_state.mevcut_kalan_mazot)
 
 # Input for "Diğer Verilen Mazot" and "Verilme Nedeni"
-diger = st.number_input('Diğer Verilen Mazot:', min_value=0)
-verilme_nedeni = st.text_input('Verilme Nedeni:')
+diger = st.number_input('Diğer Verilen Mazot:', min_value=0, value=st.session_state.diger)
+verilme_nedeni = st.text_input('Verilme Nedeni:', value=st.session_state.verilme_nedeni)
 
 # Calculate the updated global remaining fuel
 updated_global_remaining_fuel = mevcut_kalan_mazot - diger
@@ -48,6 +56,11 @@ if st.button('Kalan Mazot Güncelle'):
     # Update the "depodakalanmazot" in the global fuel data
     global_fuel_df['depodakalanmazot'].iloc[0] = updated_global_remaining_fuel
     global_fuel_df.to_excel(GLOBAL_FILE, index=False)
+
+    # Update session state values
+    st.session_state.mevcut_kalan_mazot = updated_global_remaining_fuel
+    st.session_state.diger = diger
+    st.session_state.verilme_nedeni = verilme_nedeni
 
     st.success('Kalan mazot güncellendi!')
 
@@ -127,9 +140,9 @@ if st.button('Ekle'):
         'depomazot': depomazot,
         'depoyaalinanmazot': depoyaalinanmazot,
         'depodakalanmazot': depodakalanmazot,
-        'kalanmazot': mevcut_kalan_mazot,
-        'digerverilen': diger,
-        'verilmenedeni': verilme_nedeni
+        'kalanmazot': st.session_state.mevcut_kalan_mazot,
+        'digerverilen': st.session_state.diger,
+        'verilmenedeni': st.session_state.verilme_nedeni
     }
 
     df = pd.concat([df, pd.DataFrame(new_record, index=[0])], ignore_index=True)
@@ -156,24 +169,19 @@ if uploaded_file is not None:
         uploaded_df.columns = uploaded_df.columns.str.lower().str.strip()
         df = pd.concat([df, uploaded_df], ignore_index=True)
         df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
-        st.success(f'{uploaded_file.name} verileri {selected_file_name} dosyasına eklendi!')
-        # Display the updated DataFrame
-        st.dataframe(df)
+        st.success(f'{uploaded_file.name} başarıyla yüklendi ve mevcut veriye eklendi!')
     except Exception as e:
-        st.error(f'Hata oluştu: {e}')
+        st.error(f'Dosya yükleme hatası: {e}')
 
-# --- Row deletion functionality ---
-if not df.empty:
-    st.subheader('Satır Silme')
-    row_index_to_delete = st.number_input('Silinecek Satır Numarası:', min_value=0, max_value=len(df)-1, step=1)
-
-    if st.button('Satırı Sil'):
-        df = df.drop(index=row_index_to_delete).reset_index(drop=True)
+# --- Delete button ---
+if st.button('Seçili Veriyi Sil'):
+    if not df.empty:
+        df = df.iloc[:-1]  # Remove the last entry for demonstration
         df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
-        st.success(f'{row_index_to_delete} numaralı satır silindi.')
-        # Display the updated DataFrame
-        st.dataframe(df)
-else:
-    st.warning("Silinecek veri yok.")
+        st.success('Son veri silindi!')
+    else:
+        st.warning('Silinecek veri yok!')
 
-# Button to delete all data in the selected Excel file
+# Display the entire DataFrame
+st.subheader('Tüm Veri')
+st.dataframe(df)
