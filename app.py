@@ -35,6 +35,9 @@ mevcut_kalan_mazot = st.number_input('Kalan Mazot (Mevcut):', value=float(global
 # Input for "Diğer Verilen Mazot"
 diger = st.number_input('Diğer Verilen Mazot:', min_value=0)
 
+# Input for "Verilme Nedeni"
+verilme_nedeni = st.text_input('Verilme Nedeni:')
+
 # Calculate the updated global remaining fuel
 updated_global_remaining_fuel = mevcut_kalan_mazot - diger
 
@@ -82,7 +85,7 @@ EXCEL_FILE = current_dir / selected_file_name
 expected_columns = ['tarih', 'baslangickm', 'mazot', 'katedilenyol', 
                     'toplamyol', 'toplammazot', 'ortalama100', 
                     'kumulatif100', 'depomazot', 'depoyaalinanmazot', 
-                    'depodakalanmazot', 'kalanmazot', 'digerverilen']
+                    'depodakalanmazot', 'kalanmazot', 'digerverilen', 'verilmenedeni']
 
 if EXCEL_FILE.exists():
     df = pd.read_excel(EXCEL_FILE, engine='openpyxl')
@@ -130,7 +133,8 @@ if st.button('Ekle'):
         'depoyaalinanmazot': depoyaalinanmazot,
         'depodakalanmazot': depodakalanmazot,
         'kalanmazot': mevcut_kalan_mazot,
-        'digerverilen': diger
+        'digerverilen': diger,
+        'verilmenedeni': verilme_nedeni
     }
 
     df = pd.concat([df, pd.DataFrame(new_record, index=[0])], ignore_index=True)
@@ -173,5 +177,24 @@ if not df.empty:
     if st.button('Tüm Verileri Sil'):
         df = df.iloc[0:0]  # Clear the DataFrame
         df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
-        st.success('Tüm veriler silindi.')
-        st.dataframe(df)
+        st.success(f'{selected_file_name} dosyasındaki tüm veriler silindi!')
+
+# --- Show "Verilme Nedeni" Table ---
+st.subheader('Verilme Nedeni Tablosu')
+if 'verilmenedeni' in df.columns:
+    verilme_nedeni_df = df[['verilmenedeni', 'digerverilen']].copy()  # Only show necessary columns
+    st.dataframe(verilme_nedeni_df)
+
+    # Button to download the "Verilme Nedeni" table as Excel
+    def convert_df_to_excel_bytes(df):
+        import io
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False)
+        return output.getvalue()
+
+    st.download_button(label='Verilme Nedeni Tablosunu İndir', 
+                       data=convert_df_to_excel_bytes(verilme_nedeni_df), 
+                       file_name='verilme_nedeni.xlsx')
+else:
+    st.warning('Verilme Nedeni verisi bulunamadı.')
