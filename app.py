@@ -39,9 +39,7 @@ if 'verilme_nedeni' not in st.session_state:
 
 # Create a number input for the global "Kalan Mazot"
 mevcut_kalan_mazot = st.number_input('Kalan Mazot (Mevcut):', value=st.session_state.mevcut_kalan_mazot)
-
-# Input for "Diğer Verilen Mazot" and "Verilme Nedeni"
-diger = st.number_input('Diğer Verilen Mazot:', min_value=0, value=st.session_state.diger)
+diger = st.number_input('Diğer Verilen Mazot:', min_value=0.0, value=st.session_state.diger)
 verilme_nedeni = st.text_input('Verilme Nedeni:', value=st.session_state.verilme_nedeni)
 
 # Calculate the updated global remaining fuel
@@ -98,10 +96,18 @@ expected_columns = ['tarih', 'baslangickm', 'mazot', 'katedilenyol',
                     'kumulatif100', 'depomazot', 'depoyaalinanmazot', 
                     'depodakalanmazot', 'kalanmazot', 'digerverilen', 'verilmenedeni']
 
-# Load vehicle data function
+# Load vehicle data function with error handling
 def load_vehicle_data(file_path):
     if file_path.exists():
-        return pd.read_excel(file_path, engine='openpyxl')
+        df = pd.read_excel(file_path, engine='openpyxl')
+        # Convert numeric columns to appropriate types
+        numeric_columns = ['baslangickm', 'mazot', 'katedilenyol', 'toplamyol', 
+                           'toplammazot', 'ortalama100', 'kumulatif100', 
+                           'depomazot', 'depoyaalinanmazot', 'depodakalanmazot', 
+                           'kalanmazot', 'digerverilen']
+        for col in numeric_columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')  # Convert and handle errors
+        return df
     else:
         return pd.DataFrame(columns=expected_columns)
 
@@ -124,63 +130,70 @@ if st.button('Ekle'):
     toplam_yol = df['katedilenyol'].sum() + katedilenyol
     ortalama100 = (100 / katedilenyol) * mazot if katedilenyol > 0 else 0
     kumulatif100 = (100 / toplam_yol) * mazot if toplam_yol > 0 else 0
-    toplammazot = df['mazot'].sum() + mazot
-    depomazot = df['depomazot'].sum() + depoyaalinanmazot - mazot if not df['depomazot'].empty else depoyaalinanmazot - mazot
-    depodakalanmazot = depomazot  # Remaining fuel in depot
 
-    new_record = {
+    # Create a new entry for the DataFrame
+    new_entry = {
         'tarih': tarih,
         'baslangickm': baslangickm,
         'mazot': mazot,
         'katedilenyol': katedilenyol,
         'toplamyol': toplam_yol,
-        'toplammazot': toplammazot,
+        'toplammazot': mazot,
         'ortalama100': ortalama100,
         'kumulatif100': kumulatif100,
-        'depomazot': depomazot,
+        'depomazot': 0,  # Can be set based on your logic
         'depoyaalinanmazot': depoyaalinanmazot,
-        'depodakalanmazot': depodakalanmazot,
-        'kalanmazot': st.session_state.mevcut_kalan_mazot,
-        'digerverilen': st.session_state.diger,
-        'verilmenedeni': st.session_state.verilme_nedeni
+        'depodakalanmazot': st.session_state.mevcut_kalan_mazot,
+        'kalanmazot': mevcut_kalan_mazot,
+        'digerverilen': diger,
+        'verilmenedeni': verilme_nedeni
     }
 
-    df = pd.concat([df, pd.DataFrame(new_record, index=[0])], ignore_index=True)
+    # Append the new entry to the DataFrame
+    df = df.append(new_entry, ignore_index=True)
+
+    # Save the updated DataFrame back to Excel
     df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
-    st.success(f'Data saved to {selected_file_name}!')
 
-    # Display the updated DataFrame
-    st.dataframe(df)
+    # Provide feedback to the user
+    st.success('Yeni veri eklendi!')
 
-# Display "Diğer Verilen Mazot" and "Verilme Nedeni" tables
-st.subheader('Diğer Verilen Mazot ve Verilme Nedeni Verileri')
-if not df.empty:
-    st.write('Diğer Verilen Mazot:')
-    st.dataframe(df[['digerverilen']])
-
-    st.write('Verilme Nedeni:')
-    st.dataframe(df[['verilmenedeni']])
-
-# --- Upload Excel file and append to existing data ---
-uploaded_file = st.file_uploader("Bir Excel dosyası yükleyin ve mevcut veriye ekleyin", type="xlsx")
-if uploaded_file is not None:
-    try:
-        uploaded_df = pd.read_excel(uploaded_file, engine='openpyxl')
-        uploaded_df.columns = uploaded_df.columns.str.lower().str.strip()
-        df = pd.concat([df, uploaded_df], ignore_index=True)
-        df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
-        st.success(f'{uploaded_file.name} başarıyla yüklendi ve mevcut veriye eklendi!')
-    except Exception as e:
-        st.error(f'Dosya yükleme hatası: {e}')
+    # Update session state values
+    st.session_state.mevcut_kalan_mazot = mevcut_kalan_mazot
+    st.session_state.diger = diger
+    st.session_state.verilme_nedeni = verilme_nedeni
 
 # --- Delete button ---
 if st.button('Seçili Veriyi Sil'):
     if not df.empty:
         df = df.iloc[:-1]  # Remove the last entry for demonstration
-        df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
+        df.to_excel(EXCEL_FILE, index=False)
         st.success('Son veri silindi!')
     else:
         st.warning('Silinecek veri yok!')
+
+# Display the entire DataFrame for vehicle data
+st.subheader('Araç Verileri')
+st.dataframe(df)
+
+# Display data for "verilme nedeni" and "diğer verilen mazot"
+if 'verilme_nedeni' in df.columns and 'digerverilen' in df.columns:
+    st.subheader('Verilme Nedeni Verileri')
+    st.dataframe(df[['verilmenedeni', 'digerverilen']])
+else:
+    st.warning('Verilme nedeni veya diğer verilen mazot verisi yok.')
+
+# Upload button for each vehicle plate
+uploaded_file = st.file_uploader("Excel Dosyası Yükle:", type=['xlsx'])
+if uploaded_file is not None:
+    try:
+        new_data = pd.read_excel(uploaded_file, engine='openpyxl')
+        new_data = new_data.apply(pd.to_numeric, errors='coerce')  # Convert to numeric where possible
+        df = pd.concat([df, new_data], ignore_index=True)
+        df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
+        st.success(f'{uploaded_file.name} başarıyla yüklendi ve mevcut veriye eklendi!')
+    except Exception as e:
+        st.error(f'Dosya yükleme hatası: {e}')
 
 # Display the entire DataFrame
 st.subheader('Tüm Veri')
