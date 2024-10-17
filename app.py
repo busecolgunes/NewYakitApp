@@ -157,5 +157,21 @@ if st.button('Ekle'):
     # Display the updated DataFrame
     st.dataframe(df)
 
+    # Display separate tables for "Diğer Verilen Mazot" and "Verilme Nedeni"
+    st.subheader("Diğer Verilen Mazot Verileri")
+    st.dataframe(df[['digerverilen']])  # Display a separate table for "digerverilen"
+
+    st.subheader("Verilme Nedeni Verileri")
+    st.dataframe(df[['verilmenedeni']])  # Display a separate table for "verilmenedeni"
+
 # --- Ensure data is written to the file and persists ---
-# Other app features (delete rows, download Excel, etc.) can be managed similarly
+# Load and display data for all vehicle plates
+st.subheader("Tüm Plakalar için Veri")
+for plate, file_name in files_dict.items():
+    plate_file = current_dir / file_name
+    plate_df = load_vehicle_data(plate_file)
+    if not plate_df.empty:
+        st.write(f"{plate} Plakası Verileri:")
+        st.dataframe(plate_df)
+    else:
+        st.write(f"{plate} Plakası için veri yok.")
