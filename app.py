@@ -32,10 +32,8 @@ global_remaining_fuel = global_remaining_fuel_df['global_remaining_fuel'].iloc[0
 # Create a number input for the global "Kalan Mazot"
 mevcut_kalan_mazot = st.number_input('Kalan Mazot (Mevcut):', value=float(global_remaining_fuel))
 
-# Input for "Diğer Verilen Mazot"
+# Input for "Diğer Verilen Mazot" and "Verilme Nedeni"
 diger = st.number_input('Diğer Verilen Mazot:', min_value=0)
-
-# Input for "Verilme Nedeni"
 verilme_nedeni = st.text_input('Verilme Nedeni:')
 
 # Calculate the updated global remaining fuel
@@ -87,26 +85,14 @@ expected_columns = ['tarih', 'baslangickm', 'mazot', 'katedilenyol',
                     'kumulatif100', 'depomazot', 'depoyaalinanmazot', 
                     'depodakalanmazot', 'kalanmazot', 'digerverilen', 'verilmenedeni']
 
-# Function to load data from the selected Excel file
+# Load vehicle data function
 def load_vehicle_data(file_path):
     if file_path.exists():
-        try:
-            return pd.read_excel(file_path, engine='openpyxl')
-        except Exception as e:
-            st.error(f"Error reading {file_path.name}: {e}")
-            return pd.DataFrame(columns=expected_columns)
+        return pd.read_excel(file_path, engine='openpyxl')
     else:
         return pd.DataFrame(columns=expected_columns)
 
-# Load data for the selected vehicle plate
 df = load_vehicle_data(EXCEL_FILE)
-
-# Display the data from the Excel file as a table
-if not df.empty:
-    st.subheader(f'{selected_file_key} Plakası için Mevcut Veriler')
-    st.dataframe(df)  # Display the DataFrame as a table
-else:
-    st.warning("Henüz veri yok.")
 
 # Create input fields for the user to input data
 tarih = st.text_input('Tarih:')
@@ -146,32 +132,48 @@ if st.button('Ekle'):
         'verilmenedeni': verilme_nedeni
     }
 
-    # Append the new record to the DataFrame
     df = pd.concat([df, pd.DataFrame(new_record, index=[0])], ignore_index=True)
-    
-    # Save the updated DataFrame to the Excel file
     df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
-    
     st.success(f'Data saved to {selected_file_name}!')
 
     # Display the updated DataFrame
     st.dataframe(df)
 
-    # Display separate tables for "Diğer Verilen Mazot" and "Verilme Nedeni"
-    st.subheader("Diğer Verilen Mazot Verileri")
-    st.dataframe(df[['digerverilen']])  # Display a separate table for "digerverilen"
+# Display "Diğer Verilen Mazot" and "Verilme Nedeni" tables
+st.subheader('Diğer Verilen Mazot ve Verilme Nedeni Verileri')
+if not df.empty:
+    st.write('Diğer Verilen Mazot:')
+    st.dataframe(df[['digerverilen']])
 
-    st.subheader("Verilme Nedeni Verileri")
-    st.dataframe(df[['verilmenedeni']])  # Display a separate table for "verilmenedeni"
+    st.write('Verilme Nedeni:')
+    st.dataframe(df[['verilmenedeni']])
 
-# --- Ensure data is written to the file and persists ---
-# Load and display data for all vehicle plates
-st.subheader("Tüm Plakalar için Veri")
-for plate, file_name in files_dict.items():
-    plate_file = current_dir / file_name
-    plate_df = load_vehicle_data(plate_file)
-    if not plate_df.empty:
-        st.write(f"{plate} Plakası Verileri:")
-        st.dataframe(plate_df)
-    else:
-        st.write(f"{plate} Plakası için veri yok.")
+# --- Upload Excel file and append to existing data ---
+uploaded_file = st.file_uploader("Bir Excel dosyası yükleyin ve mevcut veriye ekleyin", type="xlsx")
+if uploaded_file is not None:
+    try:
+        uploaded_df = pd.read_excel(uploaded_file, engine='openpyxl')
+        uploaded_df.columns = uploaded_df.columns.str.lower().str.strip()
+        df = pd.concat([df, uploaded_df], ignore_index=True)
+        df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
+        st.success(f'{uploaded_file.name} verileri {selected_file_name} dosyasına eklendi!')
+        # Display the updated DataFrame
+        st.dataframe(df)
+    except Exception as e:
+        st.error(f'Hata oluştu: {e}')
+
+# --- Row deletion functionality ---
+if not df.empty:
+    st.subheader('Satır Silme')
+    row_index_to_delete = st.number_input('Silinecek Satır Numarası:', min_value=0, max_value=len(df)-1, step=1)
+
+    if st.button('Satırı Sil'):
+        df = df.drop(index=row_index_to_delete).reset_index(drop=True)
+        df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
+        st.success(f'{row_index_to_delete} numaralı satır silindi.')
+        # Display the updated DataFrame
+        st.dataframe(df)
+else:
+    st.warning("Silinecek veri yok.")
+
+# Button to delete all data in the selected Excel file
